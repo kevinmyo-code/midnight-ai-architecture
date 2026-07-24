@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Midnight AI — Crew &amp; Workflow</title>
+<meta name="description" content="The Midnight AI development crew and how a change moves from an idea to a merge: the orchestrator, eight specialist agents, and the human review gate.">
+<meta property="og:title" content="Midnight AI — Crew &amp; Workflow">
+<meta property="og:description" content="Day-to-day coding crew and workflow for Midnight AI: orchestrator, specialist agents, and the human-in-the-loop review gate.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #F6F7F9;
+    --panel: #FFFFFF;
+    --panel-2: #FBFCFD;
+    --border: #E2E6EC;
+    --border-strong: #D2D8E0;
+    --text: #1E2530;
+    --text-dim: #5A6472;
+    --text-faint: #8792A2;
+    --accent: #2F6FEB;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -12px rgba(16,24,40,0.14);
+    --c-build: #2F6FEB;
+    --c-review: #B4530E;
+    --c-data: #0F766E;
+    --c-market: #7C3AED;
+    --c-recon: #64748B;
+    --c-human: #B4530E;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0F1319;
+      --panel: #161B22;
+      --panel-2: #1A2029;
+      --border: #262D38;
+      --border-strong: #323B48;
+      --text: #E7EBF1;
+      --text-dim: #9BA5B4;
+      --text-faint: #6B7685;
+      --accent: #5B8DEF;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -16px rgba(0,0,0,0.6);
+      --c-build: #5B8DEF;
+      --c-review: #E0894A;
+      --c-data: #3FB0A5;
+      --c-market: #A98BEE;
+      --c-recon: #8C99AB;
+      --c-human: #E0894A;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7F9; --panel: #FFFFFF; --panel-2: #FBFCFD; --border: #E2E6EC; --border-strong: #D2D8E0;
+    --text: #1E2530; --text-dim: #5A6472; --text-faint: #8792A2; --accent: #2F6FEB;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -12px rgba(16,24,40,0.14);
+    --c-build: #2F6FEB; --c-review: #B4530E; --c-data: #0F766E; --c-market: #7C3AED; --c-recon: #64748B; --c-human: #B4530E;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1319; --panel: #161B22; --panel-2: #1A2029; --border: #262D38; --border-strong: #323B48;
+    --text: #E7EBF1; --text-dim: #9BA5B4; --text-faint: #6B7685; --accent: #5B8DEF;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -16px rgba(0,0,0,0.6);
+    --c-build: #5B8DEF; --c-review: #E0894A; --c-data: #3FB0A5; --c-market: #A98BEE; --c-recon: #8C99AB; --c-human: #E0894A;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(24px, 5vw, 56px) clamp(16px, 5vw, 24px) 72px;
+    overflow-x: hidden;
+  }
+  .page { max-width: 1080px; margin: 0 auto; }
+  h1, h2, h3, p { margin: 0; }
+
+  .theme-toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50;
+    background: var(--panel); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 6px; padding: 6px 12px; font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--border-strong); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Header */
+  header { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 34px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
+  h1 { font-size: clamp(26px, 4.5vw, 38px); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--text-dim); font-size: 16px; max-width: 66ch; margin-top: 10px; text-wrap: balance; }
+
+  /* Chart */
+  .chart { display: flex; flex-direction: column; align-items: center; }
+  .connector { width: 1.5px; background: var(--border-strong); }
+  .connector.a { height: 26px; }
+  .connector.b { height: 20px; }
+  .rail { width: min(880px, 94%); height: 1.5px; background: var(--border-strong); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    position: relative;
+  }
+  .card::before {
+    content: ""; position: absolute; top: 14px; bottom: 14px; left: 0; width: 3px;
+    border-radius: 0 3px 3px 0; background: var(--accent-color, var(--border-strong));
+  }
+  .card .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .role { font-size: 13px; color: var(--text-dim); margin-top: 1px; font-weight: 500; }
+  .skills { list-style: none; margin: 12px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .skills li { font-size: 13px; color: var(--text-dim); padding-left: 15px; position: relative; }
+  .skills li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-color, var(--text-faint)); }
+  .id { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; display: inline-block; }
+
+  .chip { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--border-strong); color: var(--text-dim); background: var(--panel-2); }
+  .chip.opus { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .chip.haiku { color: var(--c-market); border-color: color-mix(in srgb, var(--c-market) 45%, transparent); }
+
+  /* Kevin + Stark */
+  .human { --accent-color: var(--c-human); width: min(540px, 100%); }
+  .human .name { color: var(--c-human); }
+  .human .tag { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.14em; color: #fff; background: var(--c-human); padding: 3px 8px; border-radius: 5px; font-weight: 600; }
+  .roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .roles span { font-size: 12.5px; color: var(--text-dim); background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+  .orchestrator { --accent-color: var(--accent); width: min(540px, 100%); }
+  .orchestrator .name { color: var(--accent); }
+
+  /* Pods */
+  .pods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; width: 100%; margin-top: 24px; }
+  .pod { display: flex; flex-direction: column; gap: 12px; }
+  .pod-head { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pod); }
+  .pod-head::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--pod); }
+  .pod .card { --accent-color: var(--pod); }
+  .pod .name { color: var(--pod); }
+  .pod.build  { --pod: var(--c-build); }
+  .pod.review { --pod: var(--c-review); }
+  .pod.data   { --pod: var(--c-data); }
+  .pod.market { --pod: var(--c-market); }
+  .recon { margin-top: 20px; }
+  .recon .pod { --pod: var(--c-recon); }
+  .recon .card { width: min(360px, 100%); }
+
+  /* Workflow */
+  .flow { margin-top: 52px; }
+  .flow h2, .legend h2 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  .flow .note { color: var(--text-dim); font-size: 14px; margin-bottom: 18px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 10px; }
+  .step { flex: 1 1 128px; min-width: 126px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 13px; box-shadow: var(--shadow); }
+  .step .n { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); }
+  .step .act { font-size: 13.5px; font-weight: 600; margin-top: 3px; }
+  .step .who { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .step.gate { border-color: color-mix(in srgb, var(--c-human) 55%, var(--border)); background: color-mix(in srgb, var(--c-human) 7%, var(--panel)); }
+  .step.gate .who { color: var(--c-human); font-weight: 600; }
+  .aside { margin-top: 16px; font-size: 13px; color: var(--text-dim); border-left: 2px solid var(--border-strong); padding-left: 14px; }
+  .aside b { color: var(--text); font-weight: 600; }
+
+  /* Legend */
+  .legend { margin-top: 44px; border-top: 1px solid var(--border); padding-top: 22px; display: flex; flex-wrap: wrap; gap: 24px 48px; }
+  .legend .col { display: flex; flex-direction: column; gap: 8px; }
+  .legend .row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-dim); }
+  .footer { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 18px; font-size: 13px; color: var(--text-faint); }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 860px) { .pods { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .pods { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<button type="button" class="theme-toggle" id="theme-toggle">Theme</button>
+
+<div class="page">
+
+  <header>
+    <p class="eyebrow">Midnight AI · Crew &amp; Workflow</p>
+    <h1>Who does what, and how a change ships</h1>
+    <p class="lede">The day-to-day development crew and the path from an idea to a merge. Specialist agents are dispatched by the orchestrator and report back; only the orchestrator commits, and nothing reaches <code>main</code> without a human review.</p>
+  </header>
+
+  <div class="chart">
+
+    <div class="card human">
+      <div class="top">
+        <div><span class="name">Kevin</span><div class="role">Owner &amp; Reviewer</div></div>
+        <span class="tag">IN THE LOOP</span>
+      </div>
+      <div class="roles">
+        <span>Sets direction</span>
+        <span>Checks &amp; chimes in</span>
+        <span>Reviews PRs</span>
+        <span>Owns dev → main</span>
+      </div>
+    </div>
+
+    <div class="connector a"></div>
+
+    <div class="card orchestrator">
+      <div class="top">
+        <div><span class="name">Stark</span><div class="role">Orchestrator · Lead</div></div>
+        <span class="chip opus">Opus 4.8</span>
+      </div>
+      <ul class="skills">
+        <li>Plans, scopes, and dispatches work to the crew; integrates their output</li>
+        <li>Writes code or hands it to Derek; the only one who commits</li>
+        <li>Relays results with a verification tag, never states a guess as fact</li>
+      </ul>
+    </div>
+
+    <div class="connector b"></div>
+    <div class="rail"></div>
+
+    <div class="pods">
+
+      <div class="pod build">
+        <div class="pod-head">Build &amp; ship</div>
+        <div class="card">
+          <div class="top"><div><span class="name">Derek</span><div class="role">Build Engineer</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Implements features, refactors, and build fixes in Kotlin / Compose</li>
+            <li>Knows the codebase conventions and guardrails</li>
+            <li>Ends every task with an assumptions ledger</li>
+          </ul>
+          <span class="id">coding</span>
+        </div>
+      </div>
+
+      <div class="pod review">
+        <div class="pod-head">Review &amp; QA</div>
+        <div class="card">
+          <div class="top"><div><span class="name">Ravi</span><div class="role">Senior Reviewer</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Reviews each diff against the project rules and the approved plan</li>
+            <li>Catches architecture drift and API misuse before merge</li>
+            <li>Read-only; findings are inputs, not orders</li>
+          </ul>
+          <span class="id">senior-dev</span>
+        </div>
+        <div class="card">
+          <div class="top"><div><span class="name">Vic</span><div class="role">Adversarial Auditor</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Hunts user-visible bugs by reading code paths end to end</li>
+            <li>Frozen animations, fresh-install nulls, races, resource leaks</li>
+            <li>Runs after each part lands, before any release</li>
+          </ul>
+          <span class="id">bug-hunter</span>
+        </div>
+        <div class="card">
+          <div class="top"><div><span class="name">Owen</span><div class="role">Test &amp; Release QA</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Builds the APK, installs via ADB, reproduces crashes</li>
+            <li>Triages logcat and authors test cases</li>
+            <li>Verifies fixes on device and emulator</li>
+          </ul>
+          <span class="id">qa</span>
+        </div>
+      </div>
+
+      <div class="pod data">
+        <div class="pod-head">Analysis &amp; memory</div>
+        <div class="card">
+          <div class="top"><div><span class="name">Nadia</span><div class="role">Data &amp; Numbers</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Verifies decode math, fuel constants, and database queries</li>
+            <li>Checks storage growth and model cost / latency budgets</li>
+            <li>Gate for any change touching formulas or aggregation</li>
+          </ul>
+          <span class="id">analyst</span>
+        </div>
+        <div class="card">
+          <div class="top"><div><span class="name">Marcus</span><div class="role">Librarian / Archivist</div></div><span class="chip haiku">Haiku</span></div>
+          <ul class="skills">
+            <li>Retrieves curated, cited digests from the project memory</li>
+            <li>Files session notes into shelves and keeps the index</li>
+            <li>The cheap high-volume seat; batches filing at session end</li>
+          </ul>
+          <span class="id">librarian</span>
+        </div>
+      </div>
+
+      <div class="pod market">
+        <div class="pod-head">Go-to-market</div>
+        <div class="card">
+          <div class="top"><div><span class="name">Priya</span><div class="role">Business &amp; Research</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Competitor teardowns, pricing, and policy research</li>
+            <li>App-store copy, naming, and trademark checks</li>
+            <li>External-world questions; never app code</li>
+          </ul>
+          <span class="id">business</span>
+        </div>
+        <div class="card">
+          <div class="top"><div><span class="name">Simone</span><div class="role">Marketing Strategist</div></div><span class="chip">Sonnet</span></div>
+          <ul class="skills">
+            <li>Positioning, store copy, and objection mapping</li>
+            <li>Runs a simulated three-persona focus group</li>
+            <li>Reads user-facing copy before it ships</li>
+          </ul>
+          <span class="id">marketing</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="recon">
+      <div class="pod">
+        <div class="pod-head">Recon</div>
+        <div class="card">
+          <div class="top"><div><span class="name">Explore</span><div class="role">Codebase Search</div></div><span class="chip">fleet</span></div>
+          <ul class="skills">
+            <li>Fast read-only fan-out search across the codebase</li>
+            <li>Locates code and naming conventions, returns conclusions</li>
+            <li>Pre-planning recon that keeps the main context lean</li>
+          </ul>
+          <span class="id">Explore</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <section class="flow">
+    <h2>How a change moves</h2>
+    <p class="note">The standing cadence during plan execution. The human review is the only path to <code>main</code>.</p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="act">Plan</div><div class="who">Stark</div></div>
+      <div class="step"><div class="n">02</div><div class="act">Build + tests green</div><div class="who">Derek</div></div>
+      <div class="step"><div class="n">03</div><div class="act">Review diff</div><div class="who">Ravi</div></div>
+      <div class="step"><div class="n">04</div><div class="act">Bug audit</div><div class="who">Vic</div></div>
+      <div class="step"><div class="n">05</div><div class="act">Device QA</div><div class="who">Owen</div></div>
+      <div class="step"><div class="n">06</div><div class="act">Commit → PR</div><div class="who">Stark</div></div>
+      <div class="step gate"><div class="n">07</div><div class="act">Review &amp; merge</div><div class="who">Kevin → main</div></div>
+    </div>
+    <p class="aside"><b>As needed:</b> Nadia gates commits that touch math or the database · Simone reads user-facing strings before they ship · Priya answers external-world questions · Marcus files what was learned at session end.</p>
+  </section>
+
+  <section class="legend">
+    <div class="col">
+      <h2>Models</h2>
+      <div class="row"><span class="chip opus">Opus 4.8</span> orchestration, planning, judgment</div>
+      <div class="row"><span class="chip">Sonnet</span> execution and review specialists</div>
+      <div class="row"><span class="chip haiku">Haiku</span> cheap, high-volume curation</div>
+    </div>
+    <div class="col">
+      <h2>Reading it</h2>
+      <div class="row">Codenames are the day-to-day labels.</div>
+      <div class="row">The <span class="id">mono chip</span> is the id the tooling dispatches.</div>
+      <div class="row">Agents report; they never commit.</div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    Midnight AI — development crew and workflow. See also the <a href="index.html">system architecture</a>.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  var root = document.documentElement;
+  btn.addEventListener('click', function () {
+    var current = root.getAttribute('data-theme');
+    if (!current) {
+      current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+
+</body>
+</html>
