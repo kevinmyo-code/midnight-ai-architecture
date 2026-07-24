@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Midnight AI — Memory System</title>
+<meta name="description" content="How Midnight AI's project memory works: a thin always-loaded dashboard, locked rules, and a curated library of shelves filed and recalled on demand by a cheap librarian agent.">
+<meta property="og:title" content="Midnight AI — Memory System">
+<meta property="og:description" content="Pull-based project memory: a thin dashboard, locked rules, and a curated library filed and recalled on demand by a librarian agent.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --bg: #F6F7F9; --panel: #FFFFFF; --panel-2: #FBFCFD; --border: #E2E6EC; --border-strong: #D2D8E0;
+    --text: #1E2530; --text-dim: #5A6472; --text-faint: #8792A2; --accent: #2F6FEB;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -12px rgba(16,24,40,0.14);
+    --c-dash: #2F6FEB; --c-rules: #B4530E; --c-library: #0F766E; --c-loop: #7C3AED;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0F1319; --panel: #161B22; --panel-2: #1A2029; --border: #262D38; --border-strong: #323B48;
+      --text: #E7EBF1; --text-dim: #9BA5B4; --text-faint: #6B7685; --accent: #5B8DEF;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -16px rgba(0,0,0,0.6);
+      --c-dash: #5B8DEF; --c-rules: #E0894A; --c-library: #3FB0A5; --c-loop: #A98BEE;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F6F7F9; --panel: #FFFFFF; --panel-2: #FBFCFD; --border: #E2E6EC; --border-strong: #D2D8E0;
+    --text: #1E2530; --text-dim: #5A6472; --text-faint: #8792A2; --accent: #2F6FEB;
+    --shadow: 0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -12px rgba(16,24,40,0.14);
+    --c-dash: #2F6FEB; --c-rules: #B4530E; --c-library: #0F766E; --c-loop: #7C3AED;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1319; --panel: #161B22; --panel-2: #1A2029; --border: #262D38; --border-strong: #323B48;
+    --text: #E7EBF1; --text-dim: #9BA5B4; --text-faint: #6B7685; --accent: #5B8DEF;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 28px -16px rgba(0,0,0,0.6);
+    --c-dash: #5B8DEF; --c-rules: #E0894A; --c-library: #3FB0A5; --c-loop: #A98BEE;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.55;
+    -webkit-font-smoothing: antialiased; padding: clamp(24px, 5vw, 56px) clamp(16px, 5vw, 24px) 72px;
+    overflow-x: hidden;
+  }
+  .page { max-width: 1000px; margin: 0 auto; }
+  h1, h2, h3, p { margin: 0; }
+  code { font-family: var(--font-mono); font-size: 0.92em; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+  .theme-toggle {
+    position: fixed; top: 14px; right: 14px; z-index: 50;
+    background: var(--panel); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 6px; padding: 6px 12px; font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--border-strong); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .site-nav { display: flex; gap: 22px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px; }
+  .site-nav a { color: var(--text-dim); text-decoration: none; padding-bottom: 3px; border-bottom: 1.5px solid transparent; }
+  .site-nav a:hover { color: var(--text); }
+  .site-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  header { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 34px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
+  h1 { font-size: clamp(26px, 4.5vw, 38px); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--text-dim); font-size: 16px; max-width: 68ch; margin-top: 10px; text-wrap: balance; }
+
+  section { margin-top: 44px; }
+  h2.section-head { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  .section-intro { color: var(--text-dim); font-size: 15px; max-width: 72ch; margin-bottom: 20px; }
+
+  /* Tiers (read order) */
+  .tiers { display: flex; flex-direction: column; gap: 14px; }
+  .tier {
+    display: grid; grid-template-columns: 44px 1fr; gap: 4px 18px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 18px 20px; position: relative; overflow: hidden;
+  }
+  .tier::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: var(--tc, var(--border-strong)); }
+  .tier .num { grid-row: span 2; font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--tc); }
+  .tier h3 { font-size: 16px; font-weight: 700; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .tier h3 .file { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text-faint); }
+  .tier p { color: var(--text-dim); font-size: 14px; margin-top: 6px; max-width: 74ch; }
+  .tier.dash { --tc: var(--c-dash); }
+  .tier.rules { --tc: var(--c-rules); }
+  .tier.library { --tc: var(--c-library); }
+
+  /* Shelves */
+  .shelves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .shelf { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; box-shadow: var(--shadow); padding: 14px 16px; }
+  .shelf .fn { font-family: var(--font-mono); font-size: 12.5px; color: var(--c-library); font-weight: 600; }
+  .shelf p { font-size: 13px; color: var(--text-dim); margin-top: 5px; }
+  .catalog { margin-top: 14px; font-size: 13.5px; color: var(--text-dim); border-left: 2px solid var(--border-strong); padding-left: 14px; }
+  .catalog b { color: var(--text); }
+
+  /* Librarian modes */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .mode { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 18px 20px; }
+  .mode .tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .mode h3 { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .mode p { color: var(--text-dim); font-size: 14px; margin-top: 8px; }
+  .mode .cheap { margin-top: 12px; font-size: 12.5px; color: var(--text-faint); }
+
+  /* Loop flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+  .fstep { flex: 1 1 150px; min-width: 150px; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; box-shadow: var(--shadow); padding: 13px 15px; position: relative; }
+  .fstep .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-loop); }
+  .fstep .t { font-size: 14px; font-weight: 600; margin-top: 4px; }
+  .fstep .d { font-size: 12.5px; color: var(--text-dim); margin-top: 5px; }
+  .fstep:not(:last-child)::after { content: "→"; position: absolute; right: -13px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: 14px; z-index: 1; }
+  @media (max-width: 720px) { .fstep:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -14px; transform: translateX(50%); } }
+  .loop-note { margin-top: 16px; font-size: 13.5px; color: var(--text-dim); border-left: 2px solid var(--c-loop); padding-left: 14px; }
+  .loop-note b { color: var(--text); }
+
+  .footer { margin-top: 48px; border-top: 1px solid var(--border); padding-top: 18px; font-size: 13px; color: var(--text-faint); }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 760px) { .shelves { grid-template-columns: repeat(2, 1fr); } .modes { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .shelves { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<button type="button" class="theme-toggle" id="theme-toggle">Theme</button>
+
+<div class="page">
+
+  <nav class="site-nav">
+    <a href="index.html">Architecture</a>
+    <a href="crew.html">Crew</a>
+    <a class="active" href="memory.html">Memory</a>
+  </nav>
+
+  <header>
+    <p class="eyebrow">Midnight AI · Memory System</p>
+    <h1>How context is filed and recalled</h1>
+    <p class="lede">A solo developer and a crew of agents work across hundreds of sessions, but no session can hold the whole project in its prompt. So memory is <strong>pull-based</strong>: a thin dashboard is always loaded, the rules are locked, and everything else lives in a curated library that a cheap librarian agent files into and reads back on demand — never bulk-loaded on the chance it might be needed.</p>
+  </header>
+
+  <section>
+    <h2 class="section-head">The read order</h2>
+    <p class="section-intro">Every session orients the same way, cheapest and most-current first. Only the first two tiers are ever loaded up front; the third is fetched a slice at a time.</p>
+    <div class="tiers">
+      <div class="tier dash">
+        <div class="num">1</div>
+        <h3>The dashboard <span class="file">memory/MEMORY.md</span></h3>
+        <p>A thin, always-loaded status board kept under 80 lines: the active sprint, one-line blockers, what is in flight, and notes for the next session. It answers "where are we right now" without opening anything else. State lives here; when state and the rules disagree, the dashboard wins for state.</p>
+      </div>
+      <div class="tier rules">
+        <div class="num">2</div>
+        <h3>The rules <span class="file">CLAUDE.md</span></h3>
+        <p>Locked architecture, frozen decisions, and guardrails. It changes rarely and wins ties on rules. This is the constitution the crew works under: pull-based tools only, additive database migrations, frozen-list decisions that persona reports cannot reopen.</p>
+      </div>
+      <div class="tier library">
+        <div class="num">3</div>
+        <h3>The library <span class="file">memory/library/</span></h3>
+        <p>The deep archive. Never bulk-read into a session; instead the librarian is dispatched to retrieve just the relevant digest. A card catalog (<code>INDEX.md</code>) lists every shelf in one line each, so the librarian knows where to look before opening anything.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-head">The library shelves</h2>
+    <p class="section-intro">One file per kind of long-term knowledge. Each shelf is a narrative, not a dump — enough for a future session to judge relevance from the catalog line, then open only what it needs.</p>
+    <div class="shelves">
+      <div class="shelf"><div class="fn">decisions.md</div><p>Frozen-list deltas and strategy re-evaluations: pricing, integrations, product direction.</p></div>
+      <div class="shelf"><div class="fn">blocking.md</div><p>Blocker root-cause narratives and fix status, tracked by id across sessions.</p></div>
+      <div class="shelf"><div class="fn">sprints.md</div><p>Sprint status snapshots and the verification-drive checklist.</p></div>
+      <div class="shelf"><div class="fn">hardware.md</div><p>The device validation ledger: what is proven on the real head unit and what still is not.</p></div>
+      <div class="shelf"><div class="fn">backlog-*.md</div><p>Domain backlogs — cruise, music, nav, OBD, voice, visuals, recaps — parked ideas with context.</p></div>
+      <div class="shelf"><div class="fn">playbook-*.md</div><p>Per-agent accumulated craft: codebase conventions and gotchas an agent compounds over time.</p></div>
+      <div class="shelf"><div class="fn">lessons.md</div><p>The failure-mode ledger: mistakes the crew has made and the rule that now prevents each.</p></div>
+      <div class="shelf"><div class="fn">archive.md</div><p>Closed or superseded items and the historical session log.</p></div>
+      <div class="shelf"><div class="fn">INDEX.md</div><p>The card catalog — one line per shelf. If a file is not listed here, it does not exist.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-head">The librarian</h2>
+    <p class="section-intro">A dedicated agent on the cheapest model owns the library, in two modes. The orchestrator dispatches it instead of pulling shelves into the main context — one small digest costs far less than reading a whole shelf into an expensive session.</p>
+    <div class="modes">
+      <div class="mode">
+        <span class="tag">Retrieve</span>
+        <h3>Answer, then cite</h3>
+        <p>Given a question, the librarian reads the catalog, opens only the relevant shelves, and returns a curated digest with citations back to the files — so the main session gets the answer, not the raw archive.</p>
+        <p class="cheap">Runs instead of the orchestrator reading shelves directly.</p>
+      </div>
+      <div class="mode">
+        <span class="tag">File</span>
+        <h3>Sort, then index</h3>
+        <p>At session end the orchestrator hands over the raw session notes; the librarian sorts each fact onto the right shelf, updates the dashboard, and bumps the catalog. Filing is batched into one dispatch, not drip-fed.</p>
+        <p class="cheap">Keeps the archive curated rather than append-only.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-head">How it compounds</h2>
+    <p class="section-intro">Knowledge does not evaporate at the end of a session. Two write-back loops turn each session's learning into something the next spawn reads — the only way agents "learn" without any model training.</p>
+    <div class="flow">
+      <div class="fstep"><div class="k">During</div><div class="t">A session works</div><div class="d">Builds, reviews, decides; surfaces durable facts and any mistakes made.</div></div>
+      <div class="fstep"><div class="k">Capture</div><div class="t">Notes + skill lines</div><div class="d">Agents emit durable facts as tagged lines; the orchestrator collects them.</div></div>
+      <div class="fstep"><div class="k">File</div><div class="t">Librarian sorts</div><div class="d">Facts land on shelves and playbooks; the index updates.</div></div>
+      <div class="fstep"><div class="k">Next time</div><div class="t">Recall on demand</div><div class="d">A future session retrieves just the relevant digest and builds on it.</div></div>
+    </div>
+    <p class="loop-note"><b>The lessons loop.</b> When a claim turns out wrong, it becomes an entry in <code>lessons.md</code> — what was claimed, what was actually true, and the rule that would have caught it. That rule then graduates into the relevant agent's own instructions, so the same class of mistake cannot silently return. Memory here is not just facts; it is the crew getting harder to fool.</p>
+  </section>
+
+  <section>
+    <h2 class="section-head">Why pull-based</h2>
+    <p class="section-intro">The same principle runs through the whole product: context is fetched when needed, never pre-injected on speculation. It keeps every session cheap and current, it stops stale facts from silently steering the work, and it means the archive can grow without end because no session ever pays to load the parts it does not touch. Grounding memory in real, checkable records — car telemetry, committed decisions, citations back to a file — is also what keeps it trustworthy rather than a drifting story the system tells itself.</p>
+  </section>
+
+  <footer class="footer">
+    Midnight AI — project memory system. See also the <a href="index.html">system architecture</a> and the <a href="crew.html">crew</a>.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  var root = document.documentElement;
+  btn.addEventListener('click', function () {
+    var current = root.getAttribute('data-theme');
+    if (!current) { current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  });
+})();
+</script>
+
+</body>
+</html>

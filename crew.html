@@ -85,6 +85,12 @@
   .theme-toggle:hover { color: var(--text); border-color: var(--border-strong); }
   .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  .site-nav { display: flex; gap: 22px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px; }
+  .site-nav a { color: var(--text-dim); text-decoration: none; padding-bottom: 3px; border-bottom: 1.5px solid transparent; }
+  .site-nav a:hover { color: var(--text); }
+  .site-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .site-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
   /* Header */
   header { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 34px; }
   .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; }
@@ -177,6 +183,12 @@
 <button type="button" class="theme-toggle" id="theme-toggle">Theme</button>
 
 <div class="page">
+
+  <nav class="site-nav">
+    <a href="index.html">Architecture</a>
+    <a class="active" href="crew.html">Crew</a>
+    <a href="memory.html">Memory</a>
+  </nav>
 
   <header>
     <p class="eyebrow">Midnight AI · Crew &amp; Workflow</p>

@@ -109,6 +109,26 @@
   .theme-toggle:hover { color: var(--text); border-color: var(--text-dim); }
   .theme-toggle:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
 
+  /* ---------- Site nav ---------- */
+  .site-nav {
+    display: flex;
+    gap: 22px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 26px;
+  }
+  .site-nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    padding-bottom: 3px;
+    border-bottom: 1.5px solid transparent;
+  }
+  .site-nav a:hover { color: var(--text); }
+  .site-nav a.active { color: var(--accent-amber); border-bottom-color: var(--accent-amber); }
+  .site-nav a:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+
   /* ---------- Masthead ---------- */
   .masthead {
     display: flex;
@@ -376,6 +396,12 @@
 <button type="button" class="theme-toggle" id="theme-toggle">Theme</button>
 
 <div class="page">
+
+  <nav class="site-nav">
+    <a class="active" href="index.html">Architecture</a>
+    <a href="crew.html">Crew</a>
+    <a href="memory.html">Memory</a>
+  </nav>
 
   <header class="masthead">
     <div class="masthead-eyebrow"><span class="rec-dot" aria-hidden="true"></span> System Architecture</div>
